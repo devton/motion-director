@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hook — overwhelm, flip, meet the character</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        #hk-root {
+          position: absolute;
+          inset: 0;
+          font-family: var(--font-ui);
+          color: var(--hero-ink);
+        }
+        #hk-cam {
+          position: absolute;
+          inset: 0;
+        }
+        .hk-chip {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 60px;
+          padding: 0 26px 0 22px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          border-radius: 30px;
+          background: #ffffff;
+          box-shadow: 0 14px 34px rgba(3, 12, 30, 0.45);
+          font-size: 26px;
+          font-weight: 600;
+          color: var(--ink);
+          white-space: nowrap;
+        }
+        .hk-chip i {
+          display: block;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: var(--accent);
+        }
+        .hk-line {
+          position: absolute;
+          left: 0;
+          width: 1920px;
+          text-align: center;
+          font-size: 118px;
+          font-weight: 800;
+          line-height: 130px;
+          letter-spacing: -0.04em;
+          white-space: nowrap;
+        }
+        #hk-l1 {
+          top: 262px;
+        }
+        #hk-l2 {
+          top: 402px;
+          color: var(--accent);
+        }
+        #hk-l3 {
+          top: 542px;
+        }
+        .hk-n {
+          display: inline-block;
+          min-width: 1.2em;
+          text-align: center;
+          font-variant-numeric: tabular-nums;
+        }
+        #hk-flip {
+          position: absolute;
+          left: 0;
+          top: 400px;
+          width: 1920px;
+          text-align: center;
+          font-size: 150px;
+          font-weight: 800;
+          line-height: 170px;
+          letter-spacing: -0.045em;
+          white-space: nowrap;
+        }
+        #hk-flip span {
+          display: inline-block;
+        }
+        #hk-f0 {
+          color: var(--hero-muted);
+          margin-right: 0.28em;
+        }
+        .hk-acc {
+          color: var(--accent);
+        }
+        #hk-char {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 320px;
+          height: 320px;
+          transform-origin: 0 0;
+        }
+        #hk-char-in {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          box-shadow: 0 30px 70px rgba(3, 12, 30, 0.55);
+        }
+        #hk-char-in svg {
+          display: block;
+          width: 320px;
+          height: 320px;
+        }
+        #hk-ring {
+          position: absolute;
+          left: 160px;
+          top: 160px;
+          width: 0;
+          height: 0;
+        }
+        #hk-ring i {
+          position: absolute;
+          left: -170px;
+          top: -170px;
+          width: 340px;
+          height: 340px;
+          border-radius: 50%;
+          border: 6px solid var(--accent);
+        }
+        /* the hello bubble = the chat's first bubble authored at 1x (it lands on it), posed at 2x */
+        #hk-bub {
+          position: absolute;
+          left: 0;
+          top: 0;
+          padding: 18px 24px;
+          border-radius: 8px 24px 24px 24px;
+          background: var(--soft);
+          color: var(--ink);
+          font-size: 28px;
+          font-weight: 600;
+          line-height: 38px;
+          white-space: nowrap;
+          transform-origin: 0 0;
+          box-shadow: 0 10px 30px rgba(3, 12, 30, 0.25);
+        }
+        #hk-role {
+          position: absolute;
+          left: 0;
+          top: 0;
+          font-size: 44px;
+          font-weight: 600;
+          color: var(--hero-muted);
+          white-space: nowrap;
+        }
+      </style>
+
+      <div id="hk-root" data-composition-id="hook" data-width="1920" data-height="1080">
+        <div id="hk-cam" data-layout-allow-overflow="">
+          <div id="hk-chips" data-layout-ignore=""></div>
+          <div id="hk-head"></div>
+          <div id="hk-flip" data-layout-allow-overlap=""></div>
+        </div>
+        <div id="hk-char"><div id="hk-ring" data-layout-ignore=""><i></i></div><div id="hk-char-in"></div></div>
+        <div id="hk-bub"></div>
+        <div id="hk-role"></div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          const H = hwHash;
+          const DUR = T.win.hook[1] - T.win.hook[0];
+          const kick = (t0, k) =>
+            [[0.03, k, -k * 0.6], [0.066, -k * 0.8, k * 0.5], [0.1, k * 0.3, 0], [0.133, 0, 0]].forEach(([s, x, y]) => tl.set("#hk-cam", { x, y }, t0 + s));
+
+          // ── chips: the product's breadth, kept off the headline band (x 270-1650, y 212-728) ──
+          const SLOTS = [[120, 70, -4], [1380, 64, 3], [80, 880, 3], [1420, 900, -3], [660, 60, -2], [1090, 150, 2], [330, 170, -3], [690, 930, 2],
+            [1130, 960, -4], [1630, 250, 4], [40, 360, 3], [1640, 700, -3], [40, 690, -2], [330, 990, 2], [900, 1000, -2], [1690, 480, 3]];
+          const chipsEl = document.getElementById("hk-chips");
+          const chips = L.HOOK.chips.slice(0, SLOTS.length).map((txt, i) => {
+            const [x, y, r] = SLOTS[i];
+            const el = document.createElement("div");
+            el.className = "hk-chip";
+            el.innerHTML = `<i></i>${txt}`;
+            chipsEl.appendChild(el);
+            gsap.set(el, { x, y, rotation: r, scale: 0, opacity: 0 });
+            tl.fromTo(el, { scale: 1.6, opacity: 0, rotation: r - 12 }, { scale: 1, opacity: 1, rotation: r, duration: 0.2, ease: "power4.out", immediateRender: false }, T.chips[i]);
+            for (let k = 0; k < 4; k++) tl.to(el, { x: x + H(i * 9 + k, 3) * 9, y: y + H(i * 9 + k, 5) * 7, duration: 0.08, ease: "none" }, T.jitter + k * 0.09 + (i % 3) * 0.012);
+            return { el, r };
+          });
+
+          // ── the headline: three lines, three different entrances, one counter ──
+          const head = document.getElementById("hk-head");
+          L.HOOK.lines.forEach((ln, i) => {
+            const el = document.createElement("div");
+            el.className = "hk-line";
+            el.id = `hk-l${i + 1}`;
+            el.innerHTML = ln.replace("{n}", '<span class="hk-n">0</span>');
+            head.appendChild(el);
+          });
+          UI.layered(head);
+          const LN = ["#hk-l1", "#hk-l2", "#hk-l3"];
+          gsap.set(LN, { opacity: 0 });
+          tl.fromTo(LN[0], { opacity: 0, scale: 1.5, filter: "blur(10px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.26, ease: "power4.out", immediateRender: false }, T.head[0]);
+          tl.fromTo(LN[1], { opacity: 0, x: -240 }, { opacity: 1, x: 0, duration: 0.3, ease: "expo.out", immediateRender: false }, T.head[1]);
+          tl.fromTo(LN[2], { opacity: 0, y: 80 }, { opacity: 1, y: 0, duration: 0.32, ease: "back.out(2)", immediateRender: false }, T.head[2]);
+          T.head.forEach((t, i) => kick(t, [10, 7, 9][i]));
+          head.querySelectorAll(".hk-n").forEach((n) => UI.counter(tl, n, { from: 0, to: L.HOOK.count.to, t0: T.count[0], d: T.count[1] - T.count[0] }));
+
+          // ── everything is pulled into one point; the headline is shoved away ──
+          chips.forEach(({ el, r }, i) => {
+            tl.to(el, { x: 850, y: 610, scale: 0.05, rotation: r + 180 + H(i, 7) * 90, opacity: 0, duration: 0.28, ease: "power3.in" }, T.implode + i * 0.008);
+          });
+          tl.to("#hk-head", { y: -560, opacity: 0, duration: 0.3, ease: "power3.in" }, T.implode + 0.02);
+
+          // ── the flip line: the last punctuation in the accent colour ──
+          const [f0, f1] = L.HOOK.flip;
+          const acc = f1.match(/[.!?]$/) ? `${f1.slice(0, -1)}<span class="hk-acc">${f1.slice(-1)}</span>` : f1;
+          document.getElementById("hk-flip").innerHTML = `<span id="hk-f0">${f0}</span><span id="hk-f1">${acc}</span>`;
+          UI.layered(document.getElementById("hk-flip"));
+          gsap.set(["#hk-f0", "#hk-f1"], { opacity: 0 });
+          tl.fromTo("#hk-f0", { opacity: 0, y: 70 }, { opacity: 1, y: 0, duration: 0.3, ease: "expo.out", immediateRender: false }, T.flip[0]);
+          tl.fromTo("#hk-f1", { opacity: 0, scale: 1.7 }, { opacity: 1, scale: 1, duration: 0.28, ease: "power4.out", immediateRender: false }, T.flip[1]);
+          kick(T.flip[1], 12);
+          tl.to("#hk-flip", { y: -250, scale: 0.6, duration: 0.45, ease: "power3.inOut" }, T.charPop - 0.12);
+
+          // ── the character pops out of the point, says hello, flies into the chat header ──
+          const C0 = L.CHAR0;
+          const inEl = document.getElementById("hk-char-in");
+          inEl.innerHTML = UI.avatar("hk-char-svg");
+          gsap.set("#hk-char", { x: C0.x, y: C0.y, scale: 0, opacity: 0 });
+          gsap.set("#hk-char-in", { transformOrigin: "50% 50%" });
+          tl.set("#hk-char", { opacity: 1 }, T.charPop);
+          tl.fromTo("#hk-char", { scale: 0, x: C0.x + C0.size / 2, y: C0.y + C0.size * 0.6 }, { scale: 1, x: C0.x, y: C0.y, duration: 0.5, ease: "back.out(1.8)", immediateRender: false }, T.charPop);
+          gsap.set("#hk-ring i", { opacity: 0 });
+          tl.fromTo("#hk-ring i", { opacity: 1, scale: 0.6 }, { opacity: 0, scale: 1.7, duration: 0.6, ease: "power2.out", immediateRender: false }, T.charPop + 0.22);
+          T.hello.forEach((t, k) => {
+            tl.to("#hk-char-in", { rotation: k ? 4 : -5, y: -8, duration: 0.14, ease: "power2.out" }, t - 0.02);
+            tl.to("#hk-char-in", { rotation: 0, y: 0, duration: 0.3, ease: "back.out(2)" }, t + 0.12);
+          });
+          UI.rig(tl, inEl, (t) => {
+            let amp = 3.2;
+            for (const [a, b, g] of [[T.charPop, T.charPop + 0.5, 9], [T.hello[0], T.hello[1] + 0.6, 7]]) if (t >= a && t <= b) amp = Math.max(amp, 3.2 + g * Math.sin((Math.PI * (t - a)) / (b - a)));
+            return amp;
+          });
+          const m0 = L.MESSAGES[0];
+          const bub = document.getElementById("hk-bub");
+          bub.textContent = m0.lines[0];
+          bub.style.width = `${m0.w}px`;
+          bub.style.height = `${m0.h}px`;
+          const BUB0 = { x: C0.x + C0.size + 60, y: C0.y + 30, s: 2 };
+          gsap.set(bub, { x: BUB0.x, y: BUB0.y, scale: BUB0.s, opacity: 0 });
+          tl.fromTo(bub, { opacity: 0, scale: BUB0.s * 0.7 }, { opacity: 1, scale: BUB0.s, duration: 0.2, ease: "back.out(2.2)", immediateRender: false }, T.hello[0]);
+          const role = document.getElementById("hk-role");
+          role.textContent = L.AGENT.role;
+          gsap.set(role, { x: BUB0.x + 30, y: BUB0.y + m0.h * BUB0.s + 36, opacity: 0 });
+          tl.fromTo(role, { opacity: 0, y: BUB0.y + m0.h * BUB0.s + 66 }, { opacity: 1, y: BUB0.y + m0.h * BUB0.s + 36, duration: 0.35, ease: "power3.out", immediateRender: false }, T.hello[1]);
+          tl.to("#hk-flip", { y: -700, opacity: 0, duration: 0.35, ease: "power3.in" }, T.wipe);
+          tl.to(role, { opacity: 0, duration: 0.2, ease: "power2.in" }, T.wipe);
+          const HA = L.headAvatar;
+          tl.to("#hk-char", { x: HA.x, y: HA.y, scale: HA.size / C0.size, duration: T.land - T.fly, ease: "power3.inOut" }, T.fly);
+          tl.to("#hk-char-in", { boxShadow: "0 0px 0px rgba(3, 12, 30, 0)", duration: T.land - T.fly, ease: "power2.in" }, T.fly);
+          const R = L.m0Rect;
+          tl.to(bub, { x: R.x, y: R.y, scale: 1, boxShadow: "0 8px 22px rgba(15, 30, 70, 0.14)", duration: T.land - T.fly - 0.05, ease: "power3.inOut" }, T.fly + 0.05);
+          tl.to(bub, { boxShadow: "0 0px 0px rgba(15, 30, 70, 0)", duration: 0.25, ease: "power1.out" }, T.helloHand - 0.3);
+          // hand-offs: the chat's avatar takes over on the landing frame; the hello once the panel is at rest
+          tl.set("#hk-char", { opacity: 0 }, T.land + 0.02);
+          tl.set(bub, { opacity: 0 }, T.helloHand + 0.02);
+          tl.to({}, { duration: 0.01 }, DUR - 0.01);
+
+          window.__timelines["hook"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

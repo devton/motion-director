@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stage HUD — the flow bar, the chapter ticker and the executions panel</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        /* Screen-space overlays for the 3D stage (outside the world, so neither the camera nor the travel blur
+           touches them). Same window as the stage; mounted after it (on top). Rects and times from LAYOUT
+           (BAR, HUD, LOG, T.CHAPTERS); props on the stage fade before crossing them (LAYOUT.KEEP_OUT). */
+        #sh-root {
+          position: absolute;
+          inset: 0;
+          font-family: var(--font-ui);
+          color: var(--ink);
+        }
+        #sh-bar {
+          position: absolute;
+          border-radius: 18px;
+          background: var(--panel);
+          box-shadow: 0 16px 40px rgba(15, 30, 70, 0.14), 0 0 0 1px rgba(15, 30, 70, 0.06);
+        }
+        .sh-bdot {
+          position: absolute;
+          left: 26px;
+          top: 30px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: var(--ghost);
+        }
+        .sh-bdot-on {
+          background: var(--accent);
+        }
+        .sh-bname {
+          position: absolute;
+          left: 50px;
+          top: 0;
+          font-size: 22px;
+          font-weight: 700;
+          line-height: 72px;
+          white-space: nowrap;
+        }
+        .sh-swl {
+          position: absolute;
+          left: 332px;
+          top: 0;
+          width: 80px;
+          text-align: right;
+          font-size: 19px;
+          font-weight: 600;
+          line-height: 72px;
+          color: var(--muted);
+          white-space: nowrap;
+        }
+        .sh-swl-on {
+          color: var(--accent-ink);
+        }
+        #sh-track {
+          position: absolute;
+          left: 424px;
+          top: 22px;
+          width: 52px;
+          height: 28px;
+          border-radius: 14px;
+          background: var(--line);
+        }
+        #sh-track-on {
+          position: absolute;
+          inset: 0;
+          border-radius: 14px;
+          background: var(--accent);
+          opacity: 0;
+        }
+        #sh-knob {
+          position: absolute;
+          left: 3px;
+          top: 3px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: #ffffff;
+          box-shadow: 0 2px 6px rgba(15, 30, 70, 0.25);
+        }
+        #sh-run {
+          position: absolute;
+          right: 12px;
+          top: 12px;
+          height: 48px;
+          padding: 0 20px 0 16px;
+          border-radius: 12px;
+          background: var(--primary);
+          color: var(--on-primary);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 19px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        #sh-run svg {
+          width: 20px;
+          height: 20px;
+        }
+        #sh-run-ring {
+          position: absolute;
+          inset: -5px;
+          border-radius: 16px;
+          border: 3px solid var(--accent);
+          opacity: 0;
+        }
+        #sh-hud {
+          position: absolute;
+        }
+        .sh-ch {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          white-space: nowrap;
+        }
+        .sh-chn {
+          height: 44px;
+          padding: 0 14px;
+          border-radius: 12px;
+          background: var(--primary);
+          color: var(--on-primary);
+          font-family: var(--font-mono);
+          font-size: 22px;
+          font-weight: 700;
+          line-height: 44px;
+        }
+        .sh-chl {
+          font-size: 30px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+        }
+        #sh-log {
+          position: absolute;
+          border-radius: 20px;
+          background: var(--panel);
+          box-shadow: 0 24px 60px rgba(15, 30, 70, 0.16), 0 0 0 1px rgba(15, 30, 70, 0.06);
+          padding: 18px 20px 12px;
+        }
+        .sh-lh {
+          height: 40px;
+          font-size: 21px;
+          font-weight: 700;
+          line-height: 40px;
+          white-space: nowrap;
+        }
+        .sh-lrow {
+          position: relative;
+          height: 66px;
+          overflow: hidden;
+          border-top: 1px solid var(--line);
+          white-space: nowrap;
+        }
+        .sh-lok {
+          position: absolute;
+          left: 0;
+          top: 20px;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: var(--ok);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .sh-lok svg {
+          width: 15px;
+          height: 15px;
+          stroke-width: 3.4;
+        }
+        .sh-lname {
+          position: absolute;
+          left: 40px;
+          top: 11px;
+          font-size: 18px;
+          font-weight: 700;
+        }
+        .sh-lsteps {
+          position: absolute;
+          left: 40px;
+          top: 36px;
+          font-size: 15px;
+          font-weight: 500;
+          color: var(--muted);
+        }
+        .sh-ldur {
+          position: absolute;
+          right: 0;
+          top: 22px;
+          font-family: var(--font-mono);
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--muted);
+        }
+      </style>
+
+      <div id="sh-root" data-composition-id="stage-hud" data-width="1920" data-height="1080">
+        <div id="sh-bar"></div>
+        <div id="sh-hud"></div>
+        <div id="sh-log"></div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          const T0 = T.win.stage[0];
+          const DUR = T.win.stage[1] - T0;
+          const at = (r) => r - T0;
+          const $ = (id) => document.getElementById(id);
+          const el = (tag, cls, html) => {
+            const e = document.createElement(tag);
+            e.className = cls;
+            e.innerHTML = html;
+            return e;
+          };
+          const place = (e, r) => Object.assign(e.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: r.h ? `${r.h}px` : "" });
+          const PLAY = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5 L19.5 12 L7 19.5 Z"/></svg>`;
+
+          // ── the flow bar: slides in, Draft -> Active, the Run presses, the name widens to every flow ──
+          const B = L.BAR;
+          const bar = $("sh-bar");
+          place(bar, B);
+          bar.innerHTML =
+            `<i class="sh-bdot"></i><i class="sh-bdot sh-bdot-on"></i>` +
+            `<div class="sh-bname">${B.name}</div><div class="sh-bname">${B.nameAll}</div>` +
+            `<div class="sh-swl">${B.draft}</div><div class="sh-swl sh-swl-on">${B.active}</div>` +
+            `<i id="sh-track"><i id="sh-track-on"></i><i id="sh-knob"></i></i>` +
+            `<div id="sh-run">${PLAY}<span>${B.run}</span><i id="sh-run-ring"></i></div>`;
+          UI.layered(bar);
+          const [dot0, dot1] = bar.querySelectorAll(".sh-bdot");
+          const [name0, name1] = bar.querySelectorAll(".sh-bname");
+          const [sw0, sw1] = bar.querySelectorAll(".sh-swl");
+          gsap.set(bar, { autoAlpha: 0, y: -30 });
+          tl.to(bar, { autoAlpha: 1, y: 0, duration: 0.45, ease: "power3.out" }, at(T.bar));
+          gsap.set([dot1, name1, sw1], { autoAlpha: 0 });
+          tl.to("#sh-knob", { x: 24, duration: 0.28, ease: "back.out(2)" }, at(T.activate));
+          tl.to("#sh-track-on", { opacity: 1, duration: 0.2, ease: "none" }, at(T.activate));
+          tl.to([sw0, dot0], { autoAlpha: 0, duration: 0.15, ease: "none" }, at(T.activate));
+          tl.fromTo([sw1, dot1], { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.25, ease: "power3.out", immediateRender: false }, at(T.activate + 0.05));
+          [T.press1, T.press2].forEach((t) => {
+            tl.to("#sh-run", { scale: 0.92, duration: 0.07, ease: "power2.out" }, at(t));
+            tl.to("#sh-run", { scale: 1, duration: 0.3, ease: "back.out(3)" }, at(t + 0.07));
+            tl.fromTo("#sh-run-ring", { opacity: 0.9, scale: 1 }, { opacity: 0, scale: 1.25, duration: 0.5, ease: "power2.out", immediateRender: false }, at(t + 0.05));
+          });
+          tl.to(name0, { autoAlpha: 0, y: -14, duration: 0.2, ease: "power2.in" }, at(T.scale));
+          tl.fromTo(name1, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: "power3.out", immediateRender: false }, at(T.scale + 0.1));
+
+          // ── the chapter HUD: a corner the camera never frames content into ──
+          const hud = $("sh-hud");
+          place(hud, L.HUD);
+          T.CHAPTERS.forEach(([t, num, label], i) => {
+            const ch = el("div", "sh-ch", `<span class="sh-chn">${num}</span><span class="sh-chl">${label}</span>`);
+            hud.appendChild(ch);
+            const next = T.CHAPTERS[i + 1] ? T.CHAPTERS[i + 1][0] : T.outro;
+            gsap.set(ch, { autoAlpha: 0 });
+            tl.fromTo(ch, { autoAlpha: 0, y: 26 }, { autoAlpha: 1, y: 0, duration: 0.35, ease: "power3.out", immediateRender: false }, at(t));
+            tl.to(ch, { autoAlpha: 0, y: -26, duration: 0.22, ease: "power2.in" }, at(next - 0.12));
+          });
+          UI.layered(hud);
+
+          // ── the executions panel: opens after the first run, one row per finished run ──
+          const G = L.LOG;
+          const log = $("sh-log");
+          place(log, G);
+          log.appendChild(el("div", "sh-lh", G.title));
+          G.rows.forEach(([t, name, steps, dur]) => {
+            const row = el("div", "sh-lrow", `<span class="sh-lok">${UI.ICON.check}</span><span class="sh-lname">${name}</span><span class="sh-lsteps">${steps}</span><span class="sh-ldur">${dur}</span>`);
+            log.appendChild(row);
+            // a row takes no space until it arrives: the panel grows with the log
+            gsap.set(row, { autoAlpha: 0, height: 0 });
+            tl.fromTo(row, { autoAlpha: 0, height: 0 }, { autoAlpha: 1, height: 66, duration: 0.3, ease: "power3.out", immediateRender: false }, at(t));
+            tl.fromTo(row.querySelector(".sh-lok"), { scale: 0 }, { scale: 1, duration: 0.3, ease: "back.out(3)", immediateRender: false }, at(t + 0.08));
+          });
+          UI.layered(log);
+          gsap.set(log, { autoAlpha: 0 });
+          tl.fromTo(log, { autoAlpha: 0, x: 80 }, { autoAlpha: 1, x: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, at(G.open - 0.1));
+
+          // everything leaves just before the workspace closes
+          tl.to([bar, log], { autoAlpha: 0, y: -30, duration: 0.35, ease: "power2.in" }, at(T.outro - 0.1));
+          tl.to({}, { duration: 0.01 }, DUR - 0.01);
+          window.__timelines["stage-hud"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

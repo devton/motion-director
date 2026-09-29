@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stage — flows planned, built and run on a head-on 3D board</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        /* A head-on CSS-3D board under a camera that only pans and dollies (assets/lib/camera.js): cards always
+           face the viewer; depth comes from the camera, the drops, the props and the focus. Everything is read from
+           LAYOUT (templates/lib/layout-stage.js): flows, schedule, camera keys. The world is drawn by ONE per-frame
+           writer (render). Wires come from assets/lib/board.js; the screen overlays (flow bar, chapter HUD, executions
+           panel) live in the sibling stage-hud.html, mounted on top with the same window. */
+        #st-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          font-family: var(--font-ui);
+          color: var(--ink);
+        }
+        #st-stage {
+          position: absolute;
+          inset: 0;
+          perspective: 1100px;
+          perspective-origin: 960px 560px;
+        }
+        #st-world {
+          position: absolute;
+          left: 0;
+          top: 0;
+          transform-style: preserve-3d;
+          will-change: transform;
+        }
+        #st-canvas {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          transform: translateZ(-2px);
+          background-image: radial-gradient(circle, var(--board-grid) 2.2px, rgba(0, 0, 0, 0) 2.8px);
+          background-size: 40px 40px;
+        }
+        #st-wires {
+          position: absolute;
+          left: 0;
+          top: 0;
+          overflow: visible;
+        }
+        #st-wires .gw {
+          fill: none;
+          stroke: var(--ghost);
+          stroke-width: 3;
+          stroke-dasharray: 10 12;
+          stroke-linecap: round;
+        }
+        #st-wires .idle {
+          fill: none;
+          stroke: var(--wire);
+          stroke-width: 3;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+        #st-wires .done {
+          fill: none;
+          stroke: var(--ok);
+          stroke-width: 4;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+        #st-wires .ring {
+          fill: none;
+          stroke: var(--accent);
+        }
+        .st-layer {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 0;
+          height: 0;
+          transform-style: preserve-3d;
+        }
+        /* ghost: text-free placeholder (dashed outline, a "+" slot, two bars) */
+        .st-ghost {
+          position: absolute;
+          left: 0;
+          top: 0;
+          border-radius: 18px;
+          border: 2px dashed var(--ghost);
+          background: rgba(255, 255, 255, 0.5);
+          transform-origin: 50% 50%;
+        }
+        .st-gplus {
+          position: absolute;
+          left: 20px;
+          top: 24px;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          border: 2px dashed var(--ghost);
+          color: var(--ghost);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .st-gplus svg {
+          width: 22px;
+          height: 22px;
+        }
+        .st-gbar {
+          position: absolute;
+          left: 80px;
+          top: 36px;
+          width: 180px;
+          height: 20px;
+          border-radius: 10px;
+          background: var(--ghost);
+          opacity: 0.35;
+        }
+        .st-gbar2 {
+          left: 20px;
+          top: 84px;
+          width: 230px;
+          height: 14px;
+          border-radius: 7px;
+          opacity: 0.22;
+        }
+        .st-ghi {
+          position: absolute;
+          inset: -2px;
+          border-radius: 18px;
+          border: 3px solid var(--accent);
+          opacity: 0;
+        }
+        /* node card */
+        .st-node {
+          position: absolute;
+          left: 0;
+          top: 0;
+          will-change: transform, filter, opacity;
+        }
+        .st-card {
+          position: absolute;
+          inset: 0;
+          border-radius: 18px;
+          background: var(--panel);
+          box-shadow: 0 18px 44px rgba(15, 30, 70, 0.12), 0 0 0 1px rgba(15, 30, 70, 0.08);
+        }
+        .st-ico {
+          position: absolute;
+          left: 20px;
+          top: 24px;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: var(--accent-soft);
+          color: var(--accent-ink);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .st-trigger .st-ico {
+          background: var(--primary);
+          color: var(--on-primary);
+        }
+        .st-ico svg {
+          width: 24px;
+          height: 24px;
+        }
+        .st-title {
+          position: absolute;
+          left: 78px;
+          top: 24px;
+          width: 230px;
+          font-size: 22px;
+          font-weight: 700;
+          line-height: 44px;
+          white-space: nowrap;
+          letter-spacing: -0.01em;
+        }
+        .st-sub {
+          position: absolute;
+          left: 20px;
+          top: 82px;
+          width: 320px;
+          font-size: 17px;
+          font-weight: 500;
+          color: var(--muted);
+          white-space: nowrap;
+        }
+        .st-state {
+          position: absolute;
+          right: 18px;
+          top: 32px;
+          width: 28px;
+          height: 28px;
+        }
+        .st-spin,
+        .st-ok {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+        }
+        .st-spin {
+          color: var(--run);
+        }
+        .st-spin svg {
+          width: 28px;
+          height: 28px;
+        }
+        .st-ok {
+          background: var(--ok);
+          color: #ffffff;
+        }
+        .st-ok svg {
+          width: 17px;
+          height: 17px;
+          stroke-width: 3.4;
+        }
+        .st-port {
+          position: absolute;
+          top: 40px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: var(--panel);
+          border: 2px solid var(--wire);
+        }
+        .st-in {
+          left: -6px;
+        }
+        .st-out {
+          right: -6px;
+        }
+        .st-ring {
+          position: absolute;
+          inset: -4px;
+          border-radius: 22px;
+          border: 3px solid var(--run);
+          opacity: 0;
+        }
+        .st-ring-ok {
+          border-color: var(--ok);
+        }
+        /* signals and the value tags riding with them */
+        .st-dot {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: var(--accent);
+          box-shadow: 0 0 0 5px var(--accent-soft), 0 6px 16px rgba(15, 30, 70, 0.25);
+          opacity: 0;
+        }
+        .st-tag {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 0;
+          height: 0;
+          opacity: 0;
+        }
+        .st-tag-in {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          transform: translateX(-50%);
+          height: 38px;
+          padding: 0 14px;
+          border-radius: 19px;
+          background: var(--primary);
+          color: var(--on-primary);
+          font-family: var(--font-mono);
+          font-size: 18px;
+          font-weight: 700;
+          line-height: 38px;
+          white-space: nowrap;
+        }
+        .st-tag-below .st-tag-in {
+          top: 0;
+          bottom: auto;
+        }
+        /* props: the subject's illustrations float in front of the board (here: icon discs) */
+        .st-prop {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 96px;
+          height: 96px;
+          border-radius: 50%;
+          background: var(--panel);
+          color: var(--accent-ink);
+          box-shadow: 0 24px 50px rgba(15, 30, 70, 0.22);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          will-change: transform, filter, opacity;
+        }
+        .st-prop svg {
+          width: 46px;
+          height: 46px;
+        }
+      </style>
+
+      <div id="st-root" data-composition-id="stage" data-width="1920" data-height="1080">
+        <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+          <filter id="st-travel" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+            <feGaussianBlur id="st-travel-blur" in="SourceGraphic" stdDeviation="0 0" />
+          </filter>
+        </svg>
+        <div id="st-stage" data-layout-allow-overflow="">
+          <div id="st-world" data-layout-allow-overflow="">
+            <div id="st-canvas" data-layout-ignore=""></div>
+            <svg id="st-wires" aria-hidden="true" data-layout-ignore="">
+              <g id="st-gwires"></g>
+              <g id="st-idle"></g>
+              <g id="st-done"></g>
+              <g id="st-rings"></g>
+            </svg>
+            <div id="st-ghosts" class="st-layer"></div>
+            <div id="st-nodes" class="st-layer"></div>
+            <div id="st-dots" class="st-layer"></div>
+            <div id="st-tags" class="st-layer"></div>
+            <div id="st-props" class="st-layer"></div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          const T0 = T.win.stage[0];
+          const DUR = T.win.stage[1] - T0;
+          const at = (r) => r - T0;
+          const { clamp01, lerp, seg, ez, bump, put, setA, ICON } = UI;
+          const C = L.CARD;
+          const $ = (id) => document.getElementById(id);
+          const el = (tag, cls, html) => {
+            const e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (html !== undefined) e.innerHTML = html;
+            return e;
+          };
+          const NS = "http://www.w3.org/2000/svg";
+          const svg = (tag, parent, attrs) => {
+            const e = document.createElementNS(NS, tag);
+            for (const k in attrs) e.setAttribute(k, attrs[k]);
+            $(parent).appendChild(e);
+            return e;
+          };
+          const SPIN = `<svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="11" stroke="currentColor" stroke-opacity="0.2" stroke-width="3.4"/><path d="M14 3 A11 11 0 0 1 25 14" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>`;
+          const PLUS = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5 V19 M5 12 H19"/></svg>`;
+          const tagText = (v) => (typeof v === "number" ? UI.money(v) : String(v));
+
+          // ── the rig and the camera ──
+          const stage = $("st-stage");
+          const world = $("st-world");
+          const blurNode = $("st-travel-blur");
+          const canvas = $("st-canvas");
+          const W = L.WORLD;
+          world.style.width = `${W.w}px`;
+          world.style.height = `${W.h}px`;
+          const wires = $("st-wires");
+          wires.setAttribute("width", W.w);
+          wires.setAttribute("height", W.h);
+          wires.setAttribute("viewBox", `0 0 ${W.w} ${W.h}`);
+          const cam = createCamera({ keys: L.CAM, perspective: 1100, focus: L.FOCUS });
+          // the grid fades into the workspace: a soft ellipse around the flows
+          const xs = L.NODES.map((n) => n.x);
+          const ys = L.NODES.map((n) => n.y);
+          const bx0 = Math.min(...xs) - 200;
+          const bx1 = Math.max(...xs) + C.w + 200;
+          const by0 = Math.min(...ys) - 200;
+          const by1 = Math.max(...ys) + C.h + 200;
+          const mask = `radial-gradient(ellipse ${((bx1 - bx0) / 2) * 1.15}px ${((by1 - by0) / 2) * 1.15}px at ${(bx0 + bx1) / 2}px ${(by0 + by1) / 2}px, #000 55%, rgba(0, 0, 0, 0) 100%)`;
+          canvas.style.maskImage = mask;
+          canvas.style.webkitMaskImage = mask;
+
+          // ── build the world ──
+          const byId = {};
+          L.NODES.forEach((n) => {
+            const g = el("div", "st-ghost", `<i class="st-gplus">${PLUS}</i><i class="st-gbar"></i><i class="st-gbar st-gbar2"></i><i class="st-ghi"></i>`);
+            g.style.width = `${C.w}px`;
+            g.style.height = `${C.h}px`;
+            $("st-ghosts").appendChild(g);
+            const trigger = !L.EDGES.some((e) => e.to === n.id);
+            const node = el(
+              "div",
+              `st-node${trigger ? " st-trigger" : ""}`,
+              `<div class="st-card"><span class="st-ico">${ICON[n.icon] || ICON.bolt}</span><div class="st-title">${n.title}</div>` +
+                `<div class="st-sub">${n.sub}</div><span class="st-state"><i class="st-spin">${SPIN}</i><i class="st-ok">${ICON.check}</i></span>` +
+                `<i class="st-port st-in"></i><i class="st-port st-out"></i><i class="st-ring"></i><i class="st-ring st-ring-ok"></i></div>`,
+            );
+            node.style.width = `${C.w}px`;
+            node.style.height = `${C.h}px`;
+            node.style.transformOrigin = `${C.w / 2}px ${C.h / 2}px`;
+            $("st-nodes").appendChild(node);
+            const q = (s) => node.querySelector(s);
+            if (trigger) q(".st-in").remove();
+            if (!L.EDGES.some((e) => e.from === n.id)) q(".st-out").remove();
+            // the drop depth and blur are fixed by the camera at the swap (pure: camAt is a function of time)
+            const s = cam.camAt(n.swap).s;
+            byId[n.id] = Object.assign({}, n, {
+              g,
+              ghi: g.querySelector(".st-ghi"),
+              el: node,
+              spin: q(".st-spin"),
+              ok: q(".st-ok"),
+              ringRun: q(".st-ring:not(.st-ring-ok)"),
+              ringOk: q(".st-ring-ok"),
+              dropZ: 200 / s,
+              dof: clamp01((s - 0.45) / 0.4),
+            });
+          });
+          UI.layered($("st-nodes"));
+          const NODES = Object.values(byId);
+
+          const EDGES = L.EDGES.map((e) => {
+            const geo = Board.wire(e.x1, e.y1, e.x2, e.y2); // sampled analytically: no DOM geometry
+            // a tag rides clear of the card rows: above them, or below them when its wire goes down
+            const tagDy = e.y2 > e.y1 ? C.h - C.port + 12 : -(C.port + 12);
+            const w = Object.assign({}, e, { geo, tagDy, ghostT: Math.max(byId[e.from].ghost, byId[e.to].ghost) + 0.1 });
+            w.gw = svg("path", "st-gwires", { class: "gw", d: geo.d });
+            w.idle = svg("path", "st-idle", { class: "idle", d: geo.d, "stroke-dasharray": `${geo.len} ${geo.len}` });
+            w.done = svg("path", "st-done", { class: "done", d: geo.d, "stroke-dasharray": `${geo.len} ${geo.len}` });
+            w.sigs = e.runs.map((r) => {
+              const dot = el("i", "st-dot");
+              $("st-dots").appendChild(dot);
+              let tag = null;
+              if (e.tag !== null) {
+                tag = el("div", `st-tag${e.y2 > e.y1 ? " st-tag-below" : ""}`, `<span class="st-tag-in">${tagText(e.tag)}</span>`);
+                $("st-tags").appendChild(tag);
+              }
+              return Object.assign({}, r, { dot, tag });
+            });
+            return w;
+          });
+          UI.layered($("st-tags"));
+          const RINGS = L.RINGS.map((r) => Object.assign({}, r, { el: svg("circle", "st-rings", { class: "ring", cx: r.x, cy: r.y, r: 18, "stroke-width": 0 }) }));
+          const PROPS = L.PROPS.map((p, i) => {
+            const e = el("div", "st-prop", ICON[p.icon] || ICON.spark);
+            $("st-props").appendChild(e);
+            return Object.assign({}, p, { el: e, ph: (i * 0.37) % 1 });
+          });
+
+          // ── ONE writer: the world is a pure function of root time t ──
+          const pow3out = ez("power3.out");
+          const pow2out = ez("power2.out");
+          const pow2in = ez("power2.in");
+          const inOut = ez("power1.inOut");
+          const back3 = ez("back.out(3)");
+          const back16 = ez("back.out(1.6)");
+          const hide = (e, off) => put(e, "visibility", off ? "hidden" : "");
+
+          const render = (t) => {
+            const c = cam.apply(t, { stage, world, blurNode });
+            put(canvas, "opacity", clamp01((c.s - 0.4) / 0.15).toFixed(3)); // the grid fades at wide zoom
+
+            for (const n of NODES) {
+              // ghost: pops in, pulses, brightens toward the accent in the last 0.22 s, gone when its card lands
+              const gOn = t >= n.ghost && t < n.land;
+              hide(n.g, !gOn);
+              if (gOn) {
+                const hi = seg(t, n.swap - 0.22, n.swap);
+                const pulse = 0.72 + 0.18 * Math.sin((2 * Math.PI * (t - n.ghost)) / 1.6);
+                put(n.g, "opacity", (seg(t, n.ghost, n.ghost + 0.12) * lerp(pulse, 1, hi)).toFixed(3));
+                put(n.g, "transform", `translate3d(${n.x}px, ${n.y}px, 0.5px) scale(${(0.9 + 0.1 * back16(seg(t, n.ghost, n.ghost + 0.25))).toFixed(4)})`);
+                put(n.ghi, "opacity", hi.toFixed(3));
+              }
+              // card: drops from the depth onto its ghost, then runs idle -> running -> done with every run
+              const on = t >= n.swap;
+              hide(n.el, !on);
+              if (!on) continue;
+              const p = pow3out(seg(t, n.swap, n.land));
+              let r = null;
+              for (const rr of n.runs) if (t >= rr.at) r = rr; // a run resets its flows to idle at its start
+              const st = !r || t < r.start ? "idle" : t < r.done ? "run" : "ok";
+              const sc = (1 + 0.045 * bump(t, n.land, 0.2)) * (1 + (r ? 0.05 * bump(t, r.done, 0.2) : 0));
+              put(n.el, "opacity", seg(t, n.swap, n.swap + 0.1).toFixed(3));
+              put(n.el, "transform", `translate3d(${n.x}px, ${n.y}px, ${(1 + n.dropZ * (1 - p)).toFixed(2)}px) scale(${sc.toFixed(4)})`);
+              const blur = n.dof * 8 * (1 - p);
+              put(n.el, "filter", blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "none");
+              put(n.ringRun, "opacity", st === "run" ? "1" : "0");
+              put(n.ringOk, "opacity", st === "ok" ? "1" : "0");
+              put(n.spin, "opacity", st === "run" ? "1" : "0");
+              if (st === "run") put(n.spin, "transform", `rotate(${(((t - r.start) * 540) % 360).toFixed(1)}deg)`);
+              put(n.ok, "transform", `scale(${(st === "ok" ? back3(seg(t, r.done, r.done + 0.25)) : 0).toFixed(4)})`);
+            }
+
+            for (const e of EDGES) {
+              // the dashed ghost wire marches until the real wire has drawn (while its child drops)
+              const gOn = t >= e.ghostT && t < e.draw + 0.2;
+              put(e.gw, "opacity", gOn ? (0.8 * seg(t, e.ghostT, e.ghostT + 0.2)).toFixed(3) : "0");
+              if (gOn) put(e.gw, "strokeDashoffset", (-(t * 44) % 22).toFixed(1));
+              const d = pow2out(seg(t, e.draw, e.draw + 0.2));
+              put(e.idle, "opacity", d > 0 ? "1" : "0");
+              put(e.idle, "strokeDashoffset", (e.geo.len * (1 - d)).toFixed(1));
+              // the done wire trails the current run's signal (cleared when a new run starts), then stays
+              let r0 = null;
+              for (const rr of e.runs) if (t >= rr.at) r0 = rr;
+              const dd = r0 ? inOut(seg(t, r0.t0, r0.t1)) : 0;
+              put(e.done, "opacity", dd > 0 ? "1" : "0");
+              put(e.done, "strokeDashoffset", (e.geo.len * (1 - dd)).toFixed(1));
+              for (const s of e.sigs) {
+                if (t < s.t0 || t >= s.t1 + 0.2) {
+                  put(s.dot, "opacity", "0");
+                  if (s.tag) put(s.tag, "opacity", "0");
+                  continue;
+                }
+                const [x, y] = Board.along(e.geo, inOut(seg(t, s.t0, s.t1)));
+                const absorbed = pow2in(seg(t, s.t1, s.t1 + 0.2));
+                const pop = (0.4 + 0.6 * back3(seg(t, s.t0, s.t0 + 0.2))) * (1 - 0.6 * absorbed);
+                put(s.dot, "opacity", (1 - absorbed).toFixed(3));
+                put(s.dot, "transform", `translate3d(${(x - 10).toFixed(1)}px, ${(y - 10).toFixed(1)}px, 2px) scale(${pop.toFixed(4)})`);
+                if (s.tag) {
+                  const vis = seg(t, s.t0, s.t0 + 0.12) * (1 - seg(t, s.t1 - 0.04, s.t1 + 0.12));
+                  put(s.tag, "opacity", vis.toFixed(3));
+                  put(s.tag, "transform", `translate3d(${x.toFixed(1)}px, ${(y + e.tagDy).toFixed(1)}px, 3px)`);
+                }
+              }
+            }
+
+            // rings lie on the board: they expand and only thin out (the accent never fades)
+            for (const r of RINGS) {
+              const p = seg(t, r.t, r.t + 0.55);
+              const on = t >= r.t && p < 1;
+              setA(r.el, "r", on ? (18 + (r.r1 - 18) * pow3out(p)).toFixed(1) : "18");
+              setA(r.el, "stroke-width", on ? (6 * (1 - p)).toFixed(2) : "0");
+            }
+
+            // props: pop up, float, soften with depth; medium shots only, and never over an overlay
+            for (const pr of PROPS) {
+              const p = seg(t, pr.t, pr.t + 0.45);
+              if (p <= 0) {
+                put(pr.el, "opacity", "0");
+                continue;
+              }
+              const k = 0.4 + 0.6 * back16(p);
+              const y = pr.y + 16 * Math.sin(2 * Math.PI * (t / 2.6 + pr.ph));
+              const z = pr.z + (1 - p) * 180;
+              const pp = cam.project(pr.x, y, z, t);
+              const rad = 48 * pp.k * k;
+              let fade = Math.min(1, p * 1.6) * clamp01((c.s - 0.62) / 0.12) * (1 - seg(t, T.outro - 0.4, T.outro));
+              for (const o of L.KEEP_OUT) {
+                if (t < o.from || t >= o.to) continue;
+                const dx = Math.max(o.x - pp.x, 0, pp.x - (o.x + o.w));
+                const dy = Math.max(o.y - pp.y, 0, pp.y - (o.y + o.h));
+                fade *= clamp01((Math.hypot(dx, dy) - rad) / 40);
+              }
+              put(pr.el, "opacity", fade.toFixed(3));
+              put(pr.el, "transform", `translate3d(${pr.x - 48}px, ${(y - 48).toFixed(1)}px, ${z.toFixed(1)}px) scale(${k.toFixed(4)})`);
+              put(pr.el, "filter", `blur(${(0.6 + 1.6 * c.dof).toFixed(2)}px)`);
+            }
+          };
+
+          // ── the iris: the same circle as bg.html's workspace, open at the wipe, closed at the outro ──
+          const ix = ((L.IRIS.x / 1920) * 100).toFixed(2);
+          const iy = ((L.IRIS.y / 1080) * 100).toFixed(2);
+          const root = $("st-root");
+          gsap.set(root, { clipPath: `circle(0% at ${ix}% ${iy}%)` });
+          tl.to(root, { clipPath: `circle(95% at ${ix}% ${iy}%)`, duration: 0.38, ease: "power2.in" }, at(T.wipe + 0.02));
+          tl.to(root, { clipPath: "circle(0% at 50% 50%)", duration: 0.5, ease: "power3.in" }, at(T.outro));
+
+          hwOnUpdate(tl, () => render(T0 + tl.time()));
+          tl.to({}, { duration: 0.01 }, DUR - 0.01);
+          window.__timelines["stage"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

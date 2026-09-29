@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Title — kinetic slam lines that dive into the next world</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        /* A type-led hook for flow showcases and stings: LAYOUT.TITLE.lines, one entrance per line (a scale slam
+           with blur, a side snap, a rise with overshoot), a decaying camera shake per slam, then a dive past the
+           viewer while the next world opens behind the lines (T.dive, then T.wipe in bg.html). */
+        #tt-root {
+          position: absolute;
+          inset: 0;
+          font-family: var(--font-ui);
+          color: var(--hero-ink);
+        }
+        #tt-shake {
+          position: absolute;
+          inset: 0;
+        }
+        .tt-line {
+          position: absolute;
+          left: 0;
+          width: 1920px;
+          text-align: center;
+          font-size: 112px;
+          font-weight: 800;
+          line-height: 128px;
+          letter-spacing: -0.045em;
+          white-space: nowrap;
+        }
+        .tt-in {
+          display: inline-block;
+          transform-origin: 50% 60%;
+        }
+        .tt-acc {
+          color: var(--accent);
+        }
+      </style>
+
+      <div id="tt-root" data-composition-id="title" data-width="1920" data-height="1080">
+        <div id="tt-shake" data-layout-allow-overflow=""></div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          const T0 = T.win.title[0];
+          const DUR = T.win.title[1] - T0;
+          const at = (r) => r - T0;
+          const shake = document.getElementById("tt-shake");
+          const lines = L.TITLE.lines;
+          const PITCH = 150;
+          const top0 = 540 - (lines.length * PITCH) / 2 + (PITCH - 128) / 2;
+
+          const els = lines.map((txt, i) => {
+            const row = document.createElement("div");
+            row.className = "tt-line";
+            row.style.top = `${top0 + i * PITCH}px`;
+            const inner = document.createElement("span");
+            inner.className = "tt-in";
+            if (i === lines.length - 1) {
+              // the last word of the last line carries the accent
+              const words = txt.split(" ");
+              const last = words.pop();
+              inner.innerHTML = `${words.join(" ")} <span class="tt-acc">${last}</span>`;
+            } else inner.textContent = txt;
+            row.appendChild(inner);
+            shake.appendChild(row);
+            return inner;
+          });
+          UI.layered(shake);
+
+          // three different entrances, cycled
+          const ENTER = [
+            [{ scale: 2.4, filter: "blur(14px)" }, { scale: 1, filter: "blur(0px)", duration: 0.3, ease: "power4.out" }],
+            [{ x: -280, skewX: 16, filter: "blur(10px)" }, { x: 0, skewX: 0, filter: "blur(0px)", duration: 0.28, ease: "expo.out" }],
+            [{ y: 140, scale: 0.8 }, { y: 0, scale: 1, duration: 0.42, ease: "back.out(2.4)" }],
+          ];
+          els.forEach((el, i) => {
+            const t = T.lines[i];
+            const [from, to] = ENTER[i % ENTER.length];
+            gsap.set(el, { autoAlpha: 0 });
+            tl.fromTo(el, Object.assign({ autoAlpha: 0 }, from), Object.assign({ autoAlpha: 1, immediateRender: false }, to), at(t));
+            // a 4-step decaying shake of the whole block on each slam
+            const k = 10 - i * 2;
+            [[0.03, k, -k * 0.6], [0.066, -k * 0.8, k * 0.5], [0.1, k * 0.3, 0], [0.133, 0, 0]].forEach(([s, x, y]) => tl.set(shake, { x, y }, at(t + s)));
+          });
+
+          // the dive: the lines rush past the viewer; the next world opens behind them
+          els.forEach((el, i) =>
+            tl.to(el, { scale: 2.6, filter: "blur(16px)", autoAlpha: 0, duration: 0.36, ease: "power2.in" }, at(T.dive + i * 0.04)),
+          );
+
+          tl.to({}, { duration: 0.01 }, DUR - 0.01);
+          window.__timelines["title"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

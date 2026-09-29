@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Finale — tagline, mark, character, CTA</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        #fn-root {
+          position: absolute;
+          inset: 0;
+          font-family: var(--font-ui);
+          color: var(--hero-ink);
+        }
+        #fn-all {
+          position: absolute;
+          inset: 0;
+          transform-origin: 50% 45%;
+        }
+        #fn-shake {
+          position: absolute;
+          inset: 0;
+        }
+        .fn-tl {
+          position: absolute;
+          left: 0;
+          width: 1920px;
+          display: flex;
+          justify-content: center;
+          gap: 0.28em;
+          font-size: 110px;
+          font-weight: 800;
+          line-height: 124px;
+          letter-spacing: -0.045em;
+          white-space: nowrap;
+        }
+        .fn-w {
+          display: block;
+          transform-origin: 50% 60%;
+        }
+        .fn-acc {
+          color: var(--accent);
+        }
+        /* The mark slot: replace with the official mark (SVG paths or file). Reveal it with a mask or a draw,
+           then show it untouched at rest. */
+        #fn-mark {
+          position: absolute;
+          left: 0;
+          top: 150px;
+          width: 1920px;
+          text-align: center;
+          font-size: 150px;
+          font-weight: 900;
+          letter-spacing: -0.05em;
+          line-height: 160px;
+          white-space: nowrap;
+        }
+        #fn-row {
+          position: absolute;
+          left: 0;
+          top: 560px;
+          width: 1920px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 28px;
+          white-space: nowrap;
+        }
+        #fn-char {
+          position: relative;
+          width: 132px;
+          height: 132px;
+        }
+        #fn-char svg {
+          display: block;
+          width: 132px;
+          height: 132px;
+        }
+        #fn-ring {
+          position: absolute;
+          left: 66px;
+          top: 66px;
+          width: 0;
+          height: 0;
+        }
+        #fn-ring i {
+          position: absolute;
+          left: -74px;
+          top: -74px;
+          width: 148px;
+          height: 148px;
+          border-radius: 50%;
+          border: 5px solid var(--accent);
+        }
+        #fn-line {
+          font-size: 60px;
+          font-weight: 800;
+          letter-spacing: -0.035em;
+        }
+        #fn-line span {
+          display: block;
+          margin-top: 4px;
+          font-size: 30px;
+          font-weight: 500;
+          letter-spacing: 0;
+          color: var(--hero-muted);
+        }
+        #fn-cta {
+          position: absolute;
+          left: 0;
+          top: 758px;
+          width: 1920px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 30px;
+          white-space: nowrap;
+        }
+        #fn-btn {
+          height: 72px;
+          padding: 0 34px;
+          border-radius: 8px;
+          background: var(--accent);
+          color: var(--on-accent);
+          font-size: 30px;
+          font-weight: 700;
+          line-height: 72px;
+        }
+        #fn-url {
+          font-family: var(--font-mono);
+          font-size: 32px;
+          font-weight: 600;
+        }
+        #fn-recap {
+          position: absolute;
+          left: 0;
+          top: 900px;
+          width: 1920px;
+          display: flex;
+          justify-content: center;
+          gap: 14px;
+        }
+        .fn-chip {
+          height: 56px;
+          padding: 0 22px 0 16px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border-radius: 28px;
+          background: #ffffff;
+          color: var(--ink);
+          font-size: 22px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        .fn-chip i {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: var(--accent);
+          color: var(--on-accent);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .fn-chip i svg {
+          width: 16px;
+          height: 16px;
+          stroke-width: 3.4;
+        }
+      </style>
+
+      <div id="fn-root" data-composition-id="finale" data-width="1920" data-height="1080">
+        <div id="fn-shake" data-layout-allow-overflow=""><div id="fn-tag"></div></div>
+        <div id="fn-all" data-layout-allow-overflow="">
+          <div id="fn-mark"></div>
+          <div id="fn-row">
+            <div id="fn-char"><div id="fn-ring" data-layout-ignore=""><i></i></div></div>
+            <div id="fn-line"></div>
+          </div>
+          <div id="fn-cta"><div id="fn-btn"></div><div id="fn-url"></div></div>
+          <div id="fn-recap"></div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          const F = L.FINALE;
+          const T0 = T.win.finale[0];
+          const DUR = T.win.finale[1] - T0;
+          const at = (r) => r - T0;
+
+          // ── the close line, slammed word by word (the last word in the accent colour) ──
+          const tag = document.getElementById("fn-tag");
+          const words = [];
+          F.tagline.forEach((line, li) => {
+            const row = document.createElement("div");
+            row.className = "fn-tl";
+            row.style.top = `${400 + li * 150}px`;
+            const ws = line.split(" ");
+            ws.forEach((w, wi) => {
+              const s = document.createElement("span");
+              s.className = `fn-w${li === F.tagline.length - 1 && wi === ws.length - 1 ? " fn-acc" : ""}`;
+              s.textContent = w;
+              row.appendChild(s);
+              words.push(s);
+            });
+            tag.appendChild(row);
+          });
+          UI.layered(tag);
+          gsap.set(words, { autoAlpha: 0 });
+          words.forEach((w, k) => {
+            const t = T.tagline + k * 0.125;
+            const big = k >= words.length - 2;
+            tl.fromTo(w, { autoAlpha: 0, scale: big ? 2.6 : 2.1, filter: "blur(12px)" }, { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: big ? 0.3 : 0.22, ease: "power4.out", immediateRender: false }, at(t));
+            const kk = big ? 12 : 6;
+            [[0.03, kk, -kk * 0.6], [0.066, -kk * 0.8, kk * 0.5], [0.1, kk * 0.3, 0], [0.133, 0, 0]].forEach(([s, x, y]) => tl.set("#fn-shake", { x, y }, at(t + s)));
+          });
+          // it rises and gives way to the mark
+          tl.to("#fn-tag", { y: -200, scale: 0.7, autoAlpha: 0, duration: 0.45, ease: "power3.in" }, at(T.mark - 0.3));
+
+          // ── the mark (replace with the official one; reveal it, then leave it untouched) ──
+          const mark = document.getElementById("fn-mark");
+          mark.textContent = F.wordmark;
+          gsap.set(mark, { autoAlpha: 0 });
+          tl.fromTo(mark, { autoAlpha: 0, scale: 0.05, filter: "blur(30px)" }, { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: 0.75, ease: "expo.out", immediateRender: false }, at(T.mark));
+
+          // ── the character's line (a film without a character, no LAYOUT.AGENT, closes on the line alone) ──
+          const ch = document.getElementById("fn-char");
+          const line = document.getElementById("fn-line");
+          const sub = L.AGENT ? L.AGENT.role : F.sub;
+          line.innerHTML = `${F.line}${sub ? `<span>${sub}</span>` : ""}`;
+          gsap.set(line, { opacity: 0, x: L.AGENT ? -30 : 0, y: L.AGENT ? 0 : 24 });
+          tl.to(line, { opacity: 1, x: 0, y: 0, duration: 0.4, ease: "power3.out" }, at(T.charLine));
+          if (L.AGENT) {
+            ch.insertAdjacentHTML("beforeend", UI.avatar("fn-char-svg"));
+            gsap.set("#fn-char", { scale: 0, opacity: 0 });
+            tl.to("#fn-char", { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.2)" }, at(T.charEnd));
+            gsap.set("#fn-ring i", { opacity: 0 });
+            tl.fromTo("#fn-ring i", { opacity: 1, scale: 0.6 }, { opacity: 0, scale: 1.8, duration: 0.6, ease: "power2.out", immediateRender: false }, at(T.charEnd + 0.15));
+            tl.to("#fn-char", { rotation: -6, y: -6, duration: 0.14, ease: "power2.out" }, at(T.charLine));
+            tl.to("#fn-char", { rotation: 0, y: 0, duration: 0.35, ease: "back.out(2)" }, at(T.charLine + 0.14));
+            UI.rig(tl, ch, (r) => 3 + 7 * Math.max(0, Math.sin(Math.PI * UI.seg(r, T.charLine, T.charLine + 0.7))), T0);
+          } else {
+            ch.remove();
+            line.style.textAlign = "center";
+          }
+
+          // ── the CTA and the recap ──
+          document.getElementById("fn-btn").textContent = F.cta;
+          document.getElementById("fn-url").textContent = F.url;
+          gsap.set(["#fn-btn", "#fn-url"], { opacity: 0, y: 24 });
+          tl.to(["#fn-btn", "#fn-url"], { opacity: 1, y: 0, duration: 0.4, ease: "power3.out", stagger: 0.08 }, at(T.cta));
+          tl.fromTo("#fn-btn", { scale: 1 }, { scale: 1.06, duration: 0.14, ease: "power2.out", yoyo: true, repeat: 1, immediateRender: false }, at(T.cta + 0.5));
+          const recap = document.getElementById("fn-recap");
+          L.FEATURES.forEach((f) => {
+            const el = document.createElement("div");
+            el.className = "fn-chip";
+            el.innerHTML = `<i>${UI.ICON.check}</i>${f}`;
+            recap.appendChild(el);
+          });
+          UI.layered(document.getElementById("fn-all"));
+          const chips = Array.from(recap.children);
+          gsap.set(chips, { opacity: 0, y: 40 });
+          tl.to(chips, { opacity: 1, y: 0, duration: 0.35, ease: "back.out(1.8)", stagger: 0.07 }, at(T.recap));
+
+          // a slow push to the last frame (also keeps the timeline as long as its slot)
+          tl.fromTo("#fn-all", { scale: 1 }, { scale: 1.03, duration: DUR - at(T.mark), ease: "none", immediateRender: false }, at(T.mark));
+          window.__timelines["finale"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

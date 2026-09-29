@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Agent promo</title>
+    <!-- Vendored GSAP + plugins (setup.sh copies them), so the render never touches the network. -->
+    <script src="assets/vendor/gsap.min.js"></script>
+    <script src="assets/vendor/CustomEase.min.js"></script>
+    <script src="assets/vendor/MotionPathPlugin.min.js"></script>
+    <script src="assets/vendor/DrawSVGPlugin.min.js"></script>
+    <script>
+      gsap.registerPlugin(CustomEase, MotionPathPlugin, DrawSVGPlugin);
+    </script>
+    <!-- Load order: per-frame helpers, the character (optional), the spine, the UI kit, the camera (3D stage only). -->
+    <script src="assets/lib/hw.js"></script>
+    <!-- <script src="assets/lib/character.js"></script>  a vectorized, rigged character: window.Character -->
+    <script src="assets/lib/layout.js"></script>
+    <script src="assets/lib/ui.js"></script>
+    <style>
+      /* Theme tokens: set them from DESIGN.md (the subject's brand). Every template reads only these. */
+      :root {
+        --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+        --hero-bg: #0b1733;
+        --hero-bg-2: #16306a;
+        --hero-ink: #ffffff;
+        --hero-muted: #a9bbdb;
+        --hero-light: rgba(64, 214, 190, 0.55);
+        --work-bg: #f4f6fa;
+        --grid: rgba(22, 48, 106, 0.1);
+        --panel: #ffffff;
+        --ink: #16306a;
+        --muted: #545d6e;
+        --line: #e5e7eb;
+        --soft: #f1f4f9;
+        --primary: #16306a;
+        --on-primary: #ffffff;
+        --accent: #2fd49b;
+        --on-accent: #16306a;
+        --accent-ink: #0b7a57;
+        --accent-soft: #e3f9f1;
+        --warn-soft: #fff4e0;
+        --warn-ink: #8a5200;
+        --char-bg: #3b2fd1;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--hero-bg);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--hero-bg);
+        font-family: var(--font-ui);
+      }
+      #root div[data-composition-src] {
+        position: absolute;
+        inset: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Slots: data-start / data-duration MUST equal LAYOUT.T.win (DOM order = z order). -->
+    <div id="root" data-composition-id="main" data-start="0" data-duration="40" data-width="1920" data-height="1080" data-fps="30">
+      <div id="el-bg" class="clip" data-composition-id="bg" data-composition-src="compositions/bg.html" data-start="0" data-duration="40" data-track-index="0" data-width="1920" data-height="1080"></div>
+      <div id="el-surface" class="clip" data-composition-id="surface" data-composition-src="compositions/surface.html" data-start="5.2" data-duration="28.8" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-tracker" class="clip" data-composition-id="tracker" data-composition-src="compositions/tracker.html" data-start="5.2" data-duration="28.8" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="el-chat" class="clip" data-composition-id="chat" data-composition-src="compositions/chat.html" data-start="4.7" data-duration="29.3" data-track-index="3" data-width="1920" data-height="1080"></div>
+      <div id="el-hook" class="clip" data-composition-id="hook" data-composition-src="compositions/hook.html" data-start="0" data-duration="6.1" data-track-index="4" data-width="1920" data-height="1080"></div>
+      <div id="el-finale" class="clip" data-composition-id="finale" data-composition-src="compositions/finale.html" data-start="33.4" data-duration="6.6" data-track-index="5" data-width="1920" data-height="1080"></div>
+      <!-- Audio: the score (scripts/build-score.sh) and a few SFX on physical moments (volumes 0.1-0.3). -->
+      <audio id="a-score" src="assets/audio/score.wav" data-start="0" data-duration="40" data-track-index="10" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

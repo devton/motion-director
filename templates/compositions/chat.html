@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chat — the pinned conversation</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        /* Geometry comes from LAYOUT (PANEL, AV, VIEW, BUBBLE, COMPOSER defaults below match the spine template). */
+        #ch-root {
+          position: absolute;
+          inset: 0;
+          font-family: var(--font-ui);
+          color: var(--ink);
+        }
+        #ch-panel {
+          position: absolute;
+          left: 56px;
+          top: 48px;
+          width: 680px;
+          height: 984px;
+          background: var(--panel);
+          border-radius: 28px;
+          box-shadow: 0 30px 80px rgba(15, 30, 70, 0.14), 0 0 0 1px rgba(15, 30, 70, 0.06);
+          overflow: hidden;
+        }
+        /* the avatar and its thinking ring live OUTSIDE the panel (screen coords): the panel unfolds behind them */
+        #ch-av {
+          position: absolute;
+          left: 84px;
+          top: 72px;
+          width: 88px;
+          height: 88px;
+        }
+        #ch-av svg {
+          display: block;
+          width: 88px;
+          height: 88px;
+        }
+        #ch-think {
+          position: absolute;
+          left: 76px;
+          top: 64px;
+          width: 104px;
+          height: 104px;
+          overflow: visible;
+        }
+        #ch-name {
+          position: absolute;
+          left: 136px;
+          top: 24px;
+          font-size: 38px;
+          font-weight: 800;
+          line-height: 46px;
+          letter-spacing: -0.03em;
+          white-space: nowrap;
+        }
+        #ch-dot {
+          position: absolute;
+          left: 138px;
+          top: 82px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: var(--accent);
+        }
+        #ch-status {
+          position: absolute;
+          left: 162px;
+          top: 74px;
+          font-size: 22px;
+          font-weight: 500;
+          line-height: 30px;
+          color: var(--muted);
+          white-space: nowrap;
+        }
+        #ch-hr {
+          position: absolute;
+          left: 0;
+          top: 136px;
+          width: 680px;
+          height: 1px;
+          background: var(--line);
+        }
+        #ch-view {
+          position: absolute;
+          left: 0;
+          top: 137px;
+          width: 680px;
+          height: 707px;
+          overflow: hidden;
+        }
+        #ch-list {
+          position: absolute;
+          left: 0;
+          top: 24px;
+          width: 680px;
+          height: 1800px;
+        }
+        .ch-msg {
+          position: absolute;
+          left: 0;
+          width: 680px;
+        }
+        .ch-mini {
+          position: absolute;
+          left: 24px;
+          top: 0;
+          width: 48px;
+          height: 48px;
+        }
+        .ch-mini svg {
+          display: block;
+          width: 48px;
+          height: 48px;
+        }
+        .ch-bub {
+          position: absolute;
+          top: 0;
+          padding: 18px 24px;
+          font-size: 28px;
+          font-weight: 600;
+          line-height: 38px;
+          white-space: nowrap;
+        }
+        .ch-bub-a {
+          left: 84px;
+          background: var(--soft);
+          color: var(--ink);
+          border-radius: 8px 24px 24px 24px;
+        }
+        .ch-bub-u {
+          right: 24px;
+          background: var(--primary);
+          color: var(--on-primary);
+          border-radius: 24px 24px 8px 24px;
+        }
+        .ch-line {
+          display: block;
+          height: 38px;
+        }
+        .ch-check {
+          display: inline-block;
+          width: 28px;
+          height: 28px;
+          margin-right: 10px;
+          vertical-align: -5px;
+        }
+        .ch-dotsrow {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          height: 38px;
+        }
+        .ch-typing {
+          display: block;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: var(--ink);
+          opacity: 0.55;
+        }
+        .ch-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 14px;
+          height: 56px;
+        }
+        .ch-btn {
+          position: relative;
+          height: 56px;
+          padding: 0 24px;
+          border-radius: 8px;
+          font-size: 24px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          white-space: nowrap;
+        }
+        #ch-go {
+          width: 196px;
+          background: var(--accent);
+          color: var(--on-accent);
+        }
+        #ch-alt {
+          width: 150px;
+          background: var(--panel);
+          color: var(--ink);
+          box-shadow: inset 0 0 0 2px var(--line);
+        }
+        #ch-go-done {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border-radius: 8px;
+          background: var(--accent-ink);
+          color: #ffffff;
+        }
+        #ch-ring {
+          position: absolute;
+          left: -4px;
+          top: -4px;
+          width: 204px;
+          height: 64px;
+          border-radius: 11px;
+          border: 4px solid var(--accent);
+        }
+        #ch-comp {
+          position: absolute;
+          left: 24px;
+          top: 868px;
+          width: 540px;
+          height: 88px;
+          border-radius: 16px;
+          background: var(--work-bg);
+          box-shadow: inset 0 0 0 1px var(--line);
+        }
+        #ch-ph {
+          position: absolute;
+          left: 24px;
+          top: 26px;
+          font-size: 26px;
+          font-weight: 500;
+          line-height: 36px;
+          color: var(--muted);
+          white-space: nowrap;
+        }
+        #ch-text {
+          position: absolute;
+          left: 22px;
+          top: 6px;
+          width: 496px;
+          height: 76px;
+          font-size: 26px;
+          font-weight: 500;
+          line-height: 34px;
+          display: flex;
+          align-items: center;
+        }
+        #ch-text-in {
+          display: block;
+          width: 496px;
+        }
+        #ch-caret {
+          display: inline-block;
+          width: 3px;
+          height: 30px;
+          margin-left: 2px;
+          vertical-align: -6px;
+          background: var(--accent-ink);
+        }
+        #ch-send {
+          position: absolute;
+          left: 580px;
+          top: 874px;
+          width: 76px;
+          height: 76px;
+          border-radius: 50%;
+          background: var(--accent);
+          color: var(--on-accent);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #ch-send svg {
+          width: 36px;
+          height: 36px;
+          stroke-width: 2.6;
+        }
+        #ch-cursor {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 44px;
+          height: 56px;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="ch-root" data-composition-id="chat" data-width="1920" data-height="1080">
+        <div id="ch-panel">
+          <div id="ch-name"></div>
+          <div id="ch-dot"></div>
+          <div id="ch-status"></div>
+          <div id="ch-hr"></div>
+          <div id="ch-view"><div id="ch-list" data-layout-allow-overflow=""></div></div>
+          <div id="ch-comp">
+            <div id="ch-ph">Ask anything…</div>
+            <div id="ch-text"><span id="ch-text-in"><span id="ch-typed"></span><span id="ch-caret"></span></span></div>
+          </div>
+          <div id="ch-send"></div>
+        </div>
+        <svg id="ch-think" viewBox="0 0 104 104" aria-hidden="true" data-layout-ignore=""><circle cx="52" cy="52" r="49" fill="none" style="stroke: var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="84 224" /></svg>
+        <div id="ch-av"></div>
+        <svg id="ch-cursor" viewBox="0 0 44 56" aria-hidden="true" data-layout-ignore=""><path d="M4 3 L4 44 L14.5 34 L21.5 51 L29 47.5 L22 31 L37 31 Z" style="fill: var(--ink)" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round" /></svg>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          const T0 = T.win.chat[0];
+          const DUR = T.win.chat[1] - T0;
+          const at = (r) => r - T0;
+          const H = hwHash;
+          const CHECK = (bg, ink) =>
+            `<svg class="ch-check" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14" style="fill: ${bg}"/><path d="M8 14.5 L12.2 18.5 L20 9.8" fill="none" style="stroke: ${ink}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+          // ── Header ──
+          document.getElementById("ch-name").textContent = L.AGENT.name;
+          document.getElementById("ch-status").textContent = L.AGENT.role;
+          document.getElementById("ch-send").innerHTML = UI.ICON.arrow;
+          const av = document.getElementById("ch-av");
+          av.innerHTML = UI.avatar("ch-av-svg");
+
+          // ── Messages (positions from LAYOUT; hidden until their beat) ──
+          const list = document.getElementById("ch-list");
+          const EL = {};
+          L.MESSAGES.forEach((m) => {
+            const row = document.createElement("div");
+            row.className = `ch-msg ch-${m.kind}`;
+            row.style.top = `${m.y}px`;
+            row.style.height = `${m.h}px`;
+            const lines = m.lines.map((ln, i) => `<span class="ch-line">${i === 0 && m.check ? CHECK("var(--accent)", "var(--on-accent)") : ""}${ln}</span>`).join("");
+            const actions = m.approval
+              ? `<div class="ch-actions"><div class="ch-btn" id="ch-go"><span id="ch-go-label">Approve</span><span id="ch-go-done">${CHECK("#fff", "var(--accent-ink)").replace('class="ch-check"', 'class="ch-check" style="margin:0"')}Approved</span><div id="ch-ring" data-layout-ignore=""></div></div><div class="ch-btn" id="ch-alt">Review</div></div>`
+              : "";
+            if (m.kind === "a") row.innerHTML = `<div class="ch-mini">${UI.avatar(`ch-mini-${m.id}`)}</div><div class="ch-bub ch-bub-a"${m.w ? ` style="width:${m.w}px"` : ""}>${lines}${actions}</div>`;
+            else row.innerHTML = `<div class="ch-bub ch-bub-u">${lines}</div>`;
+            list.appendChild(row);
+            EL[m.id] = row;
+          });
+          UI.layered(list);
+          const DOTS = L.MESSAGES.filter((m) => m.kind === "a" && m.k !== undefined && !m.at).map((m) => {
+            const row = document.createElement("div");
+            row.className = "ch-msg ch-a";
+            row.style.top = `${m.y}px`;
+            row.innerHTML = `<div class="ch-mini">${UI.avatar(`ch-dots-${m.id}`)}</div><div class="ch-bub ch-bub-a" style="width:118px"><div class="ch-dotsrow"><span class="ch-typing"></span><span class="ch-typing"></span><span class="ch-typing"></span></div></div>`;
+            list.appendChild(row);
+            return { row, m };
+          });
+
+          // ── The panel unfolds out of the landed avatar ──
+          const HA = L.headAvatar;
+          gsap.set("#ch-panel", { scale: 0.1, opacity: 0, transformOrigin: `${HA.x - L.PANEL.x + HA.size / 2}px ${HA.y - L.PANEL.y + HA.size / 2}px` });
+          tl.fromTo("#ch-panel", { scale: 0.1, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.2)", immediateRender: false }, at(T.panelOpen));
+          // hand-off: the hook's flyer is pixel-identical to this avatar on the landing frame; its hello bubble waits
+          gsap.set(["#ch-av", EL.m0], { opacity: 0 });
+          tl.set("#ch-av", { opacity: 1 }, at(T.land - 0.02));
+          tl.set(EL.m0, { opacity: 1 }, at(T.helloHand - 0.02));
+          const m0mini = EL.m0.querySelector(".ch-mini");
+          gsap.set(m0mini, { scale: 0, transformOrigin: "50% 50%" });
+          tl.fromTo(m0mini, { scale: 0 }, { scale: 1, duration: 0.24, ease: "back.out(2.4)", immediateRender: false }, at(T.helloHand));
+          const P0 = T.panelOpen;
+          gsap.set(["#ch-name", "#ch-dot", "#ch-status", "#ch-hr", "#ch-comp", "#ch-send"], { opacity: 0 });
+          tl.fromTo("#ch-name", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out", immediateRender: false }, at(P0 + 0.18));
+          tl.fromTo("#ch-status", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out", immediateRender: false }, at(P0 + 0.24));
+          tl.fromTo("#ch-dot", { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(3)", immediateRender: false }, at(P0 + 0.28));
+          tl.fromTo("#ch-hr", { opacity: 0, scaleX: 0, transformOrigin: "0% 50%" }, { opacity: 1, scaleX: 1, duration: 0.35, ease: "power3.out", immediateRender: false }, at(P0 + 0.2));
+          tl.fromTo(["#ch-comp", "#ch-send"], { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.35, ease: "back.out(1.6)", stagger: 0.05, immediateRender: false }, at(P0 + 0.25));
+          const firstBreath = Math.ceil(T.ASK[0].t0);
+          for (let k = 0; firstBreath + k * 2 < T.win.chat[1] - 1; k++) {
+            tl.to("#ch-dot", { scale: 1.3, duration: 0.18, ease: "power2.out" }, at(firstBreath + k * 2));
+            tl.to("#ch-dot", { scale: 1, duration: 0.3, ease: "power2.in" }, at(firstBreath + k * 2 + 0.18));
+          }
+
+          // ── Scroll: the newest bubble sits on the viewport floor; messages that scroll out are hidden ──
+          const ty = (bottom) => Math.min(0, L.LIST_H - bottom);
+          const SCROLLS = [];
+          const scrollTo = (bottom, t, d = 0.3) => {
+            SCROLLS.push([t + d, ty(bottom)]);
+            tl.to(list, { y: ty(bottom), duration: d, ease: "power3.out" }, t);
+          };
+          gsap.set(list, { y: 0 });
+          L.MESSAGES.forEach((m) => {
+            if (m.id !== "m0") gsap.set(EL[m.id], { autoAlpha: 0 });
+          });
+          const enter = (el, t, corner, dy) => {
+            const bub = el.querySelector(".ch-bub");
+            gsap.set(bub, { transformOrigin: corner });
+            tl.set(el, { autoAlpha: 1 }, t);
+            tl.fromTo(bub, { scale: 0.75, opacity: 0.6 }, { scale: 1, opacity: 1, duration: 0.12, ease: "power2.out", immediateRender: false }, t);
+            if (dy) tl.fromTo(el, { y: dy }, { y: 0, duration: 0.24, ease: "power3.out", immediateRender: false }, t);
+          };
+          const ASK = T.ASK.map((a) => Object.fromEntries(Object.entries(a).map(([k, s]) => [k, at(s)])));
+          const byK = (kind, k) => L.MESSAGES.find((m) => m.kind === kind && m.k === k && !m.at);
+          ASK.forEach((a, k) => {
+            const u = byK("u", k);
+            const s = byK("a", k);
+            enter(EL[u.id], a.send, "100% 100%", 70);
+            scrollTo(u.y + u.h, a.send);
+            const d = DOTS[k];
+            gsap.set(d.row, { autoAlpha: 0 });
+            const dbub = d.row.querySelector(".ch-bub");
+            gsap.set(dbub, { transformOrigin: "0% 0%" });
+            tl.set(d.row, { autoAlpha: 1 }, a.dots);
+            tl.fromTo(dbub, { scale: 0.6, opacity: 0.4 }, { scale: 1, opacity: 1, duration: 0.1, ease: "power2.out", immediateRender: false }, a.dots);
+            scrollTo(s.y + L.bubbleH(1), a.dots, 0.25);
+            d.row.querySelectorAll(".ch-typing").forEach((dot, i) => {
+              for (let r = 0; r < 2; r++) tl.fromTo(dot, { y: 0 }, { y: -7, duration: 0.12, ease: "sine.inOut", yoyo: true, repeat: 1, immediateRender: false }, a.dots + 0.05 + i * 0.08 + r * 0.3);
+            });
+            tl.set(d.row, { autoAlpha: 0 }, a.reply);
+            enter(EL[s.id], a.reply, "0% 0%", 0);
+            scrollTo(s.y + s.h, a.reply);
+          });
+          const ev = L.MESSAGES.find((m) => m.at === "event");
+          if (ev) {
+            enter(EL[ev.id], at(T.eventReply), "0% 0%", 0);
+            scrollTo(ev.y + ev.h, at(T.eventReply));
+          }
+          SCROLLS.sort((p, q) => p[0] - q[0]);
+          L.MESSAGES.forEach((m) => {
+            const gone = SCROLLS.find(([, y]) => y < -(m.y + m.h + 4));
+            if (gone) tl.set(EL[m.id], { visibility: "hidden" }, gone[0]);
+            // the small avatar sits at the top of its row: it leaves the view before the bubble does
+            const mini = EL[m.id].querySelector(".ch-mini");
+            const miniGone = mini && SCROLLS.find(([, y]) => y < -(m.y + L.MINI + 4));
+            if (miniGone && (!gone || miniGone[0] < gone[0])) tl.set(mini, { visibility: "hidden" }, miniGone[0]);
+          });
+          DOTS.forEach(({ row, m }) => {
+            const gone = SCROLLS.find(([, y]) => y < -(m.y + L.bubbleH(1) + 4));
+            if (gone) tl.set(row, { visibility: "hidden" }, gone[0]);
+          });
+
+          // ── Thinking: a spinning ring, the rig flares; answers: a nod ──
+          gsap.set("#ch-think", { opacity: 0, transformOrigin: "50% 50%" });
+          T.ASK.forEach((a) => {
+            tl.to("#ch-think", { opacity: 1, duration: 0.12 }, at(a.dots));
+            tl.fromTo("#ch-think", { rotation: 0 }, { rotation: 540, duration: a.reply - a.dots + 0.1, ease: "none", immediateRender: false }, at(a.dots));
+            tl.to("#ch-think", { opacity: 0, duration: 0.18 }, at(a.reply));
+          });
+          const HOT = T.ASK.map((a) => [a.dots, a.reply + 0.35]);
+          if (ev) HOT.push([T.eventReply - 0.2, T.eventReply + 0.5]);
+          UI.rig(tl, av, (r) => {
+            let amp = 2.6;
+            for (const [p, q] of HOT) if (r >= p && r <= q) amp = Math.max(amp, 2.6 + 9 * Math.sin((Math.PI * (r - p)) / (q - p)));
+            return amp;
+          }, T0);
+          [...T.ASK.map((a) => a.reply), ...(ev ? [T.eventReply] : [])].forEach((r, k) => {
+            tl.to("#ch-av", { rotation: k % 2 ? 6 : -6, y: -4, duration: 0.12, ease: "power2.out" }, at(r) - 0.02);
+            tl.to("#ch-av", { rotation: 0, y: 0, duration: 0.32, ease: "back.out(2)" }, at(r) + 0.1);
+          });
+
+          // ── Composer: deterministic typing (the score uses the same formula), caret, placeholder, send ──
+          const typed = document.getElementById("ch-typed");
+          const caret = document.getElementById("ch-caret");
+          const ph = document.getElementById("ch-ph");
+          const SCHED = ASK.map((a, k) => {
+            const text = L.REQUESTS[k];
+            const n = text.length;
+            const times = [];
+            for (let i = 0; i < n; i++) times.push(a.type0 + ((a.type1 - a.type0) * i) / n + H(i * 7 + k * 131, 5) * 0.012 + (text[i - 1] === " " ? 0.01 : 0));
+            return { text, times, a };
+          });
+          hwOnUpdate(tl, () => {
+            const t = tl.time();
+            let txt = "";
+            let typing = false;
+            let focused = false;
+            for (const s of SCHED) {
+              if (t >= s.a.type0 - 0.35 && t < s.a.send) {
+                focused = true;
+                let n = 0;
+                while (n < s.times.length && s.times[n] <= t) n++;
+                txt = s.text.slice(0, n);
+                typing = t < s.a.type1 + 0.02;
+              }
+            }
+            UI.text(typed, txt);
+            UI.put(ph, "visibility", txt.length ? "hidden" : "");
+            UI.put(caret, "opacity", focused && (typing || (t * 2.5) % 1 < 0.55) ? "1" : "0");
+          });
+          ASK.forEach((a) => {
+            tl.to("#ch-send", { scale: 0.86, duration: 0.07, ease: "power1.in" }, a.send - 0.07);
+            tl.to("#ch-send", { scale: 1, duration: 0.3, ease: "back.out(2.4)" }, a.send);
+          });
+
+          // ── Money out needs a human approval ──
+          const appr = L.MESSAGES.find((m) => m.approval);
+          if (appr) {
+            const CLICK = at(T.approveClick);
+            const tyFinal = ty(appr.y + appr.h);
+            const btnX = L.PANEL.x + L.MSG_X.aBubble + L.BUBBLE.padX + 98;
+            const btnY = L.listOrigin.y + appr.y + tyFinal + L.BUBBLE.padY + appr.lines.length * L.BUBBLE.line + 14 + 28;
+            const cursor = document.getElementById("ch-cursor");
+            gsap.set(cursor, { x: 900, y: 1120, opacity: 0 });
+            tl.set(cursor, { opacity: 1 }, CLICK - 0.62);
+            tl.fromTo(cursor, { x: 900, y: 1120 }, { x: btnX + 2, y: btnY + 1, duration: 0.55, ease: "power2.out", immediateRender: false }, CLICK - 0.62);
+            tl.to(["#ch-go", cursor], { scale: 0.93, duration: 0.1, ease: "power1.in" }, CLICK);
+            tl.to(["#ch-go", cursor], { scale: 1, duration: 0.4, ease: "back.out(1.8)" }, CLICK + 0.1);
+            gsap.set("#ch-ring", { opacity: 0 });
+            tl.fromTo("#ch-ring", { opacity: 0.9, scale: 1 }, { opacity: 0, scale: 1.3, duration: 0.6, ease: "power2.out", immediateRender: false }, CLICK + 0.1);
+            tl.to(cursor, { x: 980, y: 1160, duration: 0.55, ease: "power2.in" }, CLICK + 0.5);
+            gsap.set("#ch-go-done", { autoAlpha: 0 });
+            tl.set("#ch-go-label", { autoAlpha: 0 }, at(T.approveDone));
+            tl.fromTo("#ch-go-done", { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: "back.out(2.5)", immediateRender: false }, at(T.approveDone));
+            tl.to("#ch-alt", { opacity: 0.35, duration: 0.2, ease: "power1.out" }, at(T.approveDone));
+          }
+
+          // ── Out with the finale ──
+          tl.to(["#ch-panel", "#ch-av", "#ch-think"], { scale: 0.6, opacity: 0, x: 300, duration: 0.45, ease: "power3.in" }, at(T.outro));
+          tl.to({}, { duration: 0.01 }, DUR - 0.01);
+
+          window.__timelines["chat"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

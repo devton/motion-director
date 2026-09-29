@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Backdrop — hero world and workspace</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        #bg-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: var(--hero-bg);
+        }
+        /* the hero world: the subject's own hero treatment (replace the rays with its image/streaks if it has one) */
+        #bg-hero {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse 70% 80% at 70% 45%, var(--hero-bg-2) 0%, var(--hero-bg) 100%);
+        }
+        .bg-ray {
+          position: absolute;
+          left: 900px;
+          top: 540px;
+          width: 1400px;
+          height: 4px;
+          border-radius: 2px;
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0), var(--hero-light));
+          transform-origin: 0% 50%;
+          filter: blur(1.5px);
+        }
+        /* the workspace: a light canvas with a faint dot grid */
+        #bg-work {
+          position: absolute;
+          inset: 0;
+          background-color: var(--work-bg);
+          background-image: radial-gradient(circle, var(--grid) 1.6px, rgba(0, 0, 0, 0) 2.2px);
+          background-size: 24px 24px;
+        }
+      </style>
+
+      <div id="bg-root" data-composition-id="bg" data-width="1920" data-height="1080">
+        <div id="bg-hero" data-layout-ignore=""></div>
+        <div id="bg-rays" data-layout-ignore=""></div>
+        <div id="bg-work" data-layout-ignore=""></div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          // light streaks fanning out of a vanishing point (deterministic angles and lengths)
+          const rays = document.getElementById("bg-rays");
+          const R = [];
+          for (let i = 0; i < 26; i++) {
+            const el = document.createElement("i");
+            el.className = "bg-ray";
+            const a = -38 + (76 * i) / 25 + hwHash(i, 3) * 2;
+            const s = 0.55 + 0.45 * (hwHash(i, 7) * 0.5 + 0.5);
+            gsap.set(el, { rotation: a, scaleX: s, opacity: 0.35 + 0.5 * (hwHash(i, 9) * 0.5 + 0.5) });
+            rays.appendChild(el);
+            R.push({ el, s });
+          }
+          // a slow push toward the viewer; at the wipe the streaks rush (light speed) and the workspace opens
+          tl.fromTo("#bg-rays", { scale: 1, x: 0 }, { scale: 1.12, x: -40, duration: T.wipe, ease: "none", immediateRender: false }, 0);
+          R.forEach(({ el, s }, i) => tl.to(el, { scaleX: s * 2.6, duration: 0.5, ease: "power3.in" }, T.wipe - 0.05 + (i % 5) * 0.01));
+          // the iris opens from behind the character (its centre in the hook), so its first pixels hide behind it;
+          // a film without a character sets LAYOUT.IRIS (the point the title collapses into)
+          const IR = L.IRIS || { x: L.CHAR0.x + L.CHAR0.size / 2, y: L.CHAR0.y + L.CHAR0.size / 2 };
+          const cx = (IR.x / 19.2).toFixed(2);
+          const cy = (IR.y / 10.8).toFixed(2);
+          gsap.set("#bg-work", { clipPath: `circle(0% at ${cx}% ${cy}%)` });
+          tl.to("#bg-work", { clipPath: `circle(95% at ${cx}% ${cy}%)`, duration: 0.38, ease: "power2.in" }, T.wipe + 0.02);
+          // the close: back into the hero world
+          tl.to("#bg-work", { clipPath: "circle(0% at 50% 50%)", duration: 0.5, ease: "power3.in" }, T.outro);
+          R.forEach(({ el, s }) => tl.fromTo(el, { scaleX: s * 2.6 }, { scaleX: s, duration: 1.2, ease: "expo.out", immediateRender: false }, T.outro + 0.4));
+          tl.fromTo("#bg-rays", { scale: 1.12 }, { scale: 1.2, duration: T.end - T.outro, ease: "none", immediateRender: false }, T.outro);
+          window.__timelines["bg"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "name": "motion-director",
+  "version": "1.0.0",
+  "entry": "SKILL.md",
+  "routing": "router-only",
+  "commands": [
+    {
+      "name": "produce",
+      "description": "Make a new motion video end to end (research, concept, character, build, score, verify). Default for any new video.",
+      "skill": "workflows/produce/SKILL.md"
+    },
+    {
+      "name": "research",
+      "description": "Collect verbatim copy, product facts, limits and brand truth from the subject's public web.",
+      "skill": "workflows/research/SKILL.md"
+    },
+    {
+      "name": "concept",
+      "description": "Pitch, pick and write the brief, design spec, storyboard and the shared timing/geometry spine.",
+      "skill": "workflows/concept/SKILL.md"
+    },
+    {
+      "name": "character",
+      "description": "Turn a supplied avatar or mascot into a validated, rigged vector character.",
+      "skill": "workflows/character/SKILL.md"
+    },
+    {
+      "name": "build",
+      "description": "Write the compositions (hook, stage or chat, surfaces, finale) on the spine, with handoffs.",
+      "skill": "workflows/build/SKILL.md"
+    },
+    {
+      "name": "score",
+      "description": "Synthesize a procedural score and sound marks cut to the spine, place SFX, normalize loudness.",
+      "skill": "workflows/score/SKILL.md"
+    },
+    {
+      "name": "verify",
+      "description": "Run the gates (lint, snapshots, check, render, frames, loudness) and write the delivery report.",
+      "skill": "workflows/verify/SKILL.md"
+    }
+  ]
+}

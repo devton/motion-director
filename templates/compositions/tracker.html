@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tracker — feature chips and the running counter</title>
+  </head>
+  <body>
+    <template>
+      <style>
+        #tr-root {
+          position: absolute;
+          inset: 0;
+          font-family: var(--font-ui);
+          color: var(--ink);
+        }
+        #tr-chips {
+          position: absolute;
+          left: 792px;
+          top: 52px;
+          width: 1072px;
+          height: 56px;
+          display: flex;
+          justify-content: space-between;
+        }
+        .tr-chip {
+          position: relative;
+          height: 56px;
+          padding: 0 18px 0 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border-radius: 28px;
+          background: var(--panel);
+          box-shadow: 0 10px 26px rgba(15, 30, 70, 0.1), 0 0 0 1px rgba(15, 30, 70, 0.06);
+          font-size: 20px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        .tr-mark {
+          position: relative;
+          width: 26px;
+          height: 26px;
+        }
+        .tr-dot {
+          position: absolute;
+          left: 7px;
+          top: 7px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: var(--accent);
+        }
+        .tr-ok {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: var(--accent);
+          color: var(--on-accent);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .tr-ok svg {
+          width: 18px;
+          height: 18px;
+          stroke-width: 3.2;
+        }
+        .tr-glow {
+          position: absolute;
+          inset: -4px;
+          border-radius: 32px;
+          border: 3px solid var(--accent);
+        }
+        #tr-strip {
+          position: absolute;
+          left: 792px;
+          top: 144px;
+          width: 1072px;
+          height: 104px;
+          border-radius: 20px;
+          background: var(--panel);
+          box-shadow: 0 16px 44px rgba(15, 30, 70, 0.1), 0 0 0 1px rgba(15, 30, 70, 0.06);
+        }
+        #tr-lbl {
+          position: absolute;
+          left: 32px;
+          top: 18px;
+          font-size: 20px;
+          font-weight: 500;
+          color: var(--muted);
+          white-space: nowrap;
+        }
+        #tr-val {
+          position: absolute;
+          left: 32px;
+          top: 44px;
+          font-size: 44px;
+          font-weight: 800;
+          line-height: 48px;
+          letter-spacing: -0.03em;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+          transform-origin: 0% 50%;
+        }
+        .tr-delta {
+          position: absolute;
+          left: 380px;
+          top: 36px;
+          height: 40px;
+          padding: 0 16px;
+          border-radius: 20px;
+          font-size: 22px;
+          font-weight: 700;
+          line-height: 40px;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        .tr-in {
+          background: var(--accent-soft);
+          color: var(--accent-ink);
+        }
+        .tr-out {
+          background: var(--soft);
+          color: var(--ink);
+        }
+      </style>
+
+      <div id="tr-root" data-composition-id="tracker" data-width="1920" data-height="1080">
+        <div id="tr-chips"></div>
+        <div id="tr-strip"><div id="tr-lbl"></div><div id="tr-val"></div></div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+          const L = LAYOUT;
+          const T = L.T;
+          const T0 = T.win.tracker[0];
+          const DUR = T.win.tracker[1] - T0;
+          const at = (r) => r - T0;
+
+          // ── the features the asks exercise: a dot until done, then a check ──
+          const row = document.getElementById("tr-chips");
+          const chips = L.FEATURES.map((label) => {
+            const el = document.createElement("div");
+            el.className = "tr-chip";
+            el.innerHTML = `<div class="tr-mark"><i class="tr-dot"></i><span class="tr-ok">${UI.ICON.check}</span></div>${label}<i class="tr-glow" data-layout-ignore=""></i>`;
+            row.appendChild(el);
+            return el;
+          });
+          chips.forEach((el, k) => {
+            gsap.set(el, { opacity: 0, y: -30 });
+            tl.to(el, { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, at(T.land + 0.08 + k * 0.06));
+            const ok = el.querySelector(".tr-ok");
+            const glow = el.querySelector(".tr-glow");
+            gsap.set(ok, { scale: 0, opacity: 0 });
+            gsap.set(glow, { opacity: 0 });
+            const c = T.ASK[k] ? T.ASK[k].check : T.outro - 0.5;
+            tl.to(ok, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(3)" }, at(c));
+            tl.to(el, { scale: 1.08, duration: 0.12, ease: "power2.out" }, at(c));
+            tl.to(el, { scale: 1, duration: 0.35, ease: "back.out(2)" }, at(c + 0.12));
+            tl.fromTo(glow, { opacity: 0.9, scale: 1 }, { opacity: 0, scale: 1.25, duration: 0.6, ease: "power2.out", immediateRender: false }, at(c));
+          });
+
+          // ── the running counter: moves only with real money in/out, a delta pill rides beside it ──
+          const C = L.COUNTER;
+          document.getElementById("tr-lbl").textContent = C.label;
+          const val = document.getElementById("tr-val");
+          const e = UI.ez("power2.out");
+          hwOnUpdate(tl, () => {
+            const r = tl.time() + T0;
+            let v = C.start;
+            for (const [t, d] of C.steps) v += d * e(UI.seg(r, t, t + 0.6));
+            UI.text(val, UI.money(v));
+          });
+          const strip = document.getElementById("tr-strip");
+          C.steps.forEach(([t, d]) => {
+            const pill = document.createElement("div");
+            pill.className = `tr-delta ${d >= 0 ? "tr-in" : "tr-out"}`;
+            pill.textContent = UI.money(d, { plus: true });
+            strip.appendChild(pill);
+            gsap.set(pill, { autoAlpha: 0 });
+            tl.fromTo(pill, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: "back.out(2)", immediateRender: false }, at(t));
+            tl.to(pill, { autoAlpha: 0, y: -14, duration: 0.3, ease: "power2.in" }, at(t + 1.6));
+            tl.fromTo(val, { scale: 1 }, { scale: 1.06, duration: 0.14, ease: "power2.out", yoyo: true, repeat: 1, immediateRender: false }, at(t));
+          });
+          UI.layered(document.getElementById("tr-root"));
+          gsap.set(strip, { opacity: 0, y: -24 });
+          tl.to(strip, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, at(T.land + 0.2));
+
+          tl.to(["#tr-chips", "#tr-strip"], { opacity: 0, y: -60, scale: 0.9, duration: 0.4, ease: "power3.in", stagger: 0.04 }, at(T.outro));
+          tl.to({}, { duration: 0.01 }, DUR - 0.01);
+          window.__timelines["tracker"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>
