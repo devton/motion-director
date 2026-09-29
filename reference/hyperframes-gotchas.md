@@ -97,3 +97,13 @@ Each of these cost real debugging. Most never show in `lint`; several only show 
 37. **Hidden rows still take space:** `autoAlpha: 0` leaves a list's rows in the layout, so a panel that
     should grow with its rows shows up tall and empty. Animate each row's height from 0 (with
     `overflow: hidden`) as it arrives.
+38. **An iris tweened as a clip-path string can land off-centre:** `circle(0% at x% y%)` -> `circle(120% at
+    x% y%)` drew its centre at the wrong x in a real project. Draw irises per frame in px from the spine
+    (`circle(Rpx at Xpx Ypx)` through a cached style writer) and check the centre on a snapshot.
+39. **`bun install` fails on the ffmpeg-static download** (HTTP 5xx from its release host): transient. Re-run
+    `setup.sh`; it keeps every file it already added and repeats the install.
+40. **A scene's static layers show at its window start:** grid lines or axes of the next scene appear over
+    the previous one while their windows overlap. Draw them in on the scene's own cue, after the handoff.
+41. **A camera push breaks a pixel-identical handoff:** a scene with a slow push scales the rects it hands
+    over, so the receiving scene's copy shows doubled edges and labels. Keep handed-over elements out of
+    the pushed group, or push both scenes identically.
